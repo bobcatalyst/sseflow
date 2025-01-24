@@ -1,0 +1,43 @@
+name: Autotag
+on:
+  push:
+    branches:
+      - main
+concurrency: production
+jobs:
+  Patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - name: Get new version
+        id: taggerDryRun
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DRY_RUN: true
+          DEFAULT_BUMP: patch
+
+      - name: echo new tag
+        run: |
+          echo "The next tag version will be: ${{ steps.taggerDryRun.outputs.new_tag }}"
+
+      - name: Setup Go 1.23.x
+        uses: actions/setup-go@v5
+        with:
+          # Semantic version range syntax or exact version of Go
+          go-version: '1.23.x'
+      - name: Install dependencies
+        run: go get .
+      - name: Test with the Go CLI
+        run: go test ./...
+
+      - name: Minor version for each merge
+        id: taggerFinal
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
