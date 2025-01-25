@@ -4,12 +4,19 @@ import (
 	"context"
 	"github.com/bobcatalyst/flow"
 	"net/http"
+	"time"
 )
+
+var _ interface {
+	flow.Pushable[*Message]
+	context.Context
+} = (*Server)(nil)
 
 type Server struct {
 	events flow.Stream[*Message]
 	err    error
 	done   chan struct{}
+	ctx    context.Context
 }
 
 func Upgrade(w http.ResponseWriter, r *http.Request) *Server {
@@ -22,6 +29,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) *Server {
 	ctx, cancel := context.WithCancel(r.Context())
 	srv := &Server{
 		done: make(chan struct{}),
+		ctx:  ctx,
 	}
 
 	ev := srv.events.Listen(ctx)
@@ -44,6 +52,27 @@ func (srv *Server) Close() error {
 	srv.events.Close()
 	<-srv.done
 	return srv.err
+}
+
+func (srv *Server) Done() <-chan struct{} {
+	return srv.done
+}
+
+func (srv *Server) Deadline() (deadline time.Time, ok bool) {
+	return srv.ctx.Deadline()
+}
+
+func (srv *Server) Value(k any) any {
+	return srv.ctx.Value(k)
+}
+
+func (srv *Server) Err() error {
+	select {
+	case <-srv.done:
+		return srv.err
+	default:
+		return srv.ctx.Err()
+	}
 }
 
 type nopFlusher struct{}
