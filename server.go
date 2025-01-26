@@ -21,10 +21,11 @@ type Server struct {
 
 func Upgrade(w http.ResponseWriter, r *http.Request) *Server {
 	fw := getFw(w)
-	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Content-Type", "text/event-stream;charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
+	fw.Flush()
 
 	ctx, cancel := context.WithCancel(r.Context())
 	srv := &Server{
